@@ -1,11 +1,15 @@
 %name		hlhs
-%version	1.0.0
+%version	0.4.3
 %build		1
 %definst	yes
 %deps		none
 %maintainers	HLCoreDev
 %description	The Hardened Linux Hardening Scripts (HLHS)
 %changelog
+
+jan-10-2020:
+- several tiny improvements were made, checked code on
+  current Debian stable
 
 nov-30-2007:
 - remove /etc/meta/meta functions

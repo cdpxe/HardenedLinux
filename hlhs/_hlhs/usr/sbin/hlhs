@@ -4,7 +4,7 @@
 #############################################################
 ##        HARDENED LINUX HARDENING SCRIPTS (HLHS)          ##
 #############################################################
-## Copyright (C) 2006-2007 Steffen Wendzel                 ##
+## Copyright (C) 2006-2007,2019 Steffen Wendzel            ##
 ##                     <steffen (at) wendzel (dot) de>     ##
 #############################################################
 #############################################################
@@ -15,7 +15,7 @@
 BASEDIR=/var/log/hlhs
 TMPFILE=$BASEDIR/tmpfile
 YES=0		# check if the user choosed the "YES" button in a dialog
-VERSION=0.4.1
+VERSION=0.4.3
 NEED_REBOOT="0"	# do we need to reboot after re-config?
 HLHS_LOG=$BASEDIR/hlhs.log
 
@@ -325,7 +325,7 @@ if [ ! -d $BASEDIR ]; then
 	if [ "$NEED_REBOOT" = "1" ]; then
 		dialog --title "Need a reboot" \
 			--msgbox "Some important changes were made. \
-You need to reboot your system to apply them." \
+The easiest way to apply them is to reboot." \
 			10 70
 	fi
 fi
