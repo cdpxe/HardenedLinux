@@ -1,11 +1,19 @@
 #!/bin/dash -e
 
+TMP=/tmp/hlhs
+CWD="`pwd`"
+PKG=/tmp/pkg/hlhs
+
+
 # first create the _hlhs.tgz
-rm -rf $TMP/_hlhs
-mkdir $TMP/_hlhs
-cp -r $CWD/_hlhs/* $TMP/_hlhs/
+rm -rf $TMP
+rm -rf $PKG
+mkdir -p $TMP
+mkdir -p $PKG
+mkdir $PKG/install
+cp -r $CWD/_hlhs/* $TMP/
 # remove editor and subversion files!
-cd $TMP/_hlhs/
+cd $TMP
 rm -rf `find . -name '*~' -o -name '.svn'`
 mv -v * $PKG/
 
