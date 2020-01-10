@@ -1,4 +1,6 @@
 #!/bin/dash -e
+# This file is a build file for the cpfos package management tool
+# of the Hardened Linux distribution.
 
 TMP=/tmp/hlhs
 CWD="`pwd`"
