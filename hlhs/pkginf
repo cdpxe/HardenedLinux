@@ -1,0 +1,19 @@
+%name		hlhs
+%version	1.0.0
+%build		1
+%definst	yes
+%deps		none
+%maintainers	HLCoreDev
+%description	The Hardened Linux Hardening Scripts (HLHS)
+%changelog
+
+nov-30-2007:
+- remove /etc/meta/meta functions
+
+oct-26-2007:
+- add a search function for strange filenames
+
+oct-16-2007:
+- init to the new package system
+- add postinst.sh script
+

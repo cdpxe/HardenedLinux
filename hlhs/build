@@ -1,0 +1,15 @@
+#!/bin/dash -e
+
+# first create the _hlhs.tgz
+rm -rf $TMP/_hlhs
+mkdir $TMP/_hlhs
+cp -r $CWD/_hlhs/* $TMP/_hlhs/
+# remove editor and subversion files!
+cd $TMP/_hlhs/
+rm -rf `find . -name '*~' -o -name '.svn'`
+mv -v * $PKG/
+
+# now the postinst.sh script
+cp -v $CWD/postinst.sh $PKG/install/
+chmod 755 $PKG/install/postinst.sh
+

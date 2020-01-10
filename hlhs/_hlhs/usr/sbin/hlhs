@@ -1,0 +1,335 @@
+#!/bin/bash
+
+#############################################################
+#############################################################
+##        HARDENED LINUX HARDENING SCRIPTS (HLHS)          ##
+#############################################################
+## Copyright (C) 2006-2007 Steffen Wendzel                 ##
+##                     <steffen (at) wendzel (dot) de>     ##
+#############################################################
+#############################################################
+
+# TODO: remove ncurses/dialog stuff and only use console plaintext
+#       output
+
+BASEDIR=/var/log/hlhs
+TMPFILE=$BASEDIR/tmpfile
+YES=0		# check if the user choosed the "YES" button in a dialog
+VERSION=0.4.1
+NEED_REBOOT="0"	# do we need to reboot after re-config?
+HLHS_LOG=$BASEDIR/hlhs.log
+
+##
+## run_setup
+##
+
+run_setup ()
+{
+	dialog --title "Hardened Linux Hardening Scripts" \
+		--msgbox "Welcome to the configuration assistant \
+of the \"Hardened Linux Hardening Scripts\" (HLHS).\n\n \
+This scripts will improve the security of your system very well." \
+	       	9 70
+	
+	dialog --title "Securing /proc" \
+		--yesno "Do you want me to secure the /proc directory \
+on every system startup. This does not take much time and will improve \
+the network security settings of your linux system very well. \
+\n\n\
+This for example prevents your system from accepting ICMP redirects and \
+from responding to ICMP echo broadcast packets." \
+		10 70
+	if [ "$?" = "$YES" ]; then
+		touch $BASEDIR/proc
+	fi
+
+	dialog --title "Securing Executables" \
+		--yesno "Do you want me to restrict the permissions for \
+different executables on your linux system?\n\n \
+This prevents non-root users from using netstat, ping an other tools. \
+This also removes some GUID/SUID bits." \
+		9 70
+	if [ "$?" = "$YES" ]; then
+		secure_binarys
+	fi
+	sleep 1
+
+	dialog --title "Basic Port Scan Protection" \
+		--yesno "Do you want me to set up firewall rules to prevent \
+usual TCP port scans?" \
+		10 70
+	if [ "$?" = "$YES" ]; then
+		activate_iptables_scanprot
+	fi
+	sleep 1
+
+	dialog --title "Search for strange files?" \
+		--yesno "Should I now search your system for typical files \
+left by an attacker? This can take a long time!" \
+		10 70
+	if [ "$?" = "$YES" ]; then
+		search_strange_files
+	fi
+	sleep 1
+
+	dialog --title "Swap Encryption" \
+		--yesno "Do you want to enable the encryption of your swap?" \
+		9 70
+	if [ "$?" = "$YES" ]; then
+		activate_swap_encryption
+	fi
+	sleep 1
+
+	dialog --title "HLHS Configuration Done" --msgbox \
+		"The HLHS Configuration is done now.\n\n\n \
+Have a lot of secured days!\n \
+           --your hardened linux developers" 10 70
+}
+
+display_errormsg ()
+{
+	dialog --title "Error handling" --msgbox \
+		"An error occured. If you are able to fix this problem, you can \
+run the configuration of hlhs again by running \"hlhs -r\". But first, we should \
+continue with the configuration." 10 70
+}
+
+##
+## search for strange files
+##
+
+search_strange_files ()
+{
+	find / -name '.. ' -o -name '.. *' -o -name '. ' -o -name '. *' -o -name ' *' 2>/dev/null
+	echo "search completed. please press return ..."
+	read garbage
+}
+
+##
+## secure_proc
+##
+
+secure_proc ()
+{
+
+	echo '  ==> Securing /proc...'
+
+	##
+	## Source (already modified a few times in hlhs):
+	## http://www.securityfocus.com/infocus/1711
+	##
+	
+	enable () { for file in $@; do echo 1 > $file; done }
+	disable () { for file in $@; do echo 0 > $file; done }
+	
+	PN4=/proc/sys/net/ipv4
+	PN6=/proc/sys/net/ipv6
+	
+	enable $PN4/icmp_echo_ignore_all \
+		$PN4/icmp_echo_ignore_broadcasts \
+		$PN4/conf/*/rp_filter $PN4/conf/*/log_martians
+	
+	disable $PN4/conf/*/accept_source_route \
+		$PN4/conf/*/accept_redirects \
+		$PN4/conf/*/secure_redirects \
+		$PN4/conf/*/send_redirects \
+		$PN4/ip_forward
+
+	if [ -d $PN6 ]; then
+		disable $PN6/conf/*/accept_redirects \
+			$PN6/conf/*/accept_ra
+	fi
+}
+
+##
+## secure_binarys
+##
+
+chm ()
+{
+	chmod 0700 $*
+}
+
+secure_binarys ()
+{
+
+	echo '  ==> securing binarys...'
+
+	chm /bin/mount
+	chm /bin/umount
+	chm /bin/netstat
+	chm /bin/ping
+	chm /bin/ping6
+	chm /sbin/ifconfig
+	chm /sbin/iwconfig
+	chm /sbin/ip
+	chm /usr/bin/at
+	chm /usr/bin/chfn
+	chm /usr/bin/chsh
+	chm /usr/bin/chage
+	chm /usr/bin/crontab
+	chm /usr/bin/expiry
+	chm /usr/bin/rcp
+	chm /usr/bin/rlogin
+	chm /usr/bin/rsh
+	chm /usr/bin/traceroute
+	chm /usr/bin/traceroute6
+	chm /usr/libexec/pt_chown
+	chm /usr/bin/nc
+	chm /usr/bin/nmap
+	chm /usr/sbin/in.*       # in.comsat and such things
+}
+
+##
+## iptables rules to prevent port scans
+##
+
+write_ipt_rule ()
+{
+	IPT=/usr/sbin/iptables
+	IPT_PREFLAGS="-t mangle -A PREROUTING -p tcp --tcp-flags "
+	IPT_LOGFILES="--log-tcp-options --log-ip-options"
+
+	echo "$IPT $IPT_PREFLAGS $1 -j LOG --log-prefix \"$2\" $IPT_LOGFLAGS" >> $3
+	echo "$IPT $IPT_PREFLAGS $1 -j DROP" >> $3
+}
+
+activate_iptables_scanprot ()
+{
+	FW_SCRIPT=/etc/firewall.conf
+	
+	if [ -f $FW_SCRIPT ]; then
+		dialog --title "Problem: Firewall configuration already exist." \
+			--yesno "The script $FW_SCRIPT does already exist. Are you \
+sure that you want me to overwrite it?" \
+			10 70
+		if [ "$?" != "$YES" ]; then
+			return # don't go on in this function
+		fi
+		rm -rf $FW_SCRIPT
+		if [ "$?" = "1" ]; then
+			dialog --title "Unable to remove file!" --msgbox \
+				"Unable to remove $FW_SCRIPT. I\'m sorry." \
+				9 70
+			display_errormsg
+			return # stop here too
+		fi
+	fi
+
+	echo "/usr/sbin/iptables --flush -t mangle" > $FW_SCRIPT
+	write_ipt_rule "SYN,ACK,FIN,RST RST"	"TCP SYN STEALTH SCAN"	$FW_SCRIPT
+	write_ipt_rule "ALL FIN,URG,PSH"	"TCP XMAS SCAN"		$FW_SCRIPT
+	write_ipt_rule "ALL NONE"		"TCP NULL SCAN"		$FW_SCRIPT
+	write_ipt_rule "SYN,RST SYN,RST"	"TCP SYN/RST SCAN"	$FW_SCRIPT
+	write_ipt_rule "SYN,FIN SYN,FIN"	"TCP SYN/FIN SCAN"	$FW_SCRIPT
+	chmod +x $FW_SCRIPT
+
+	echo "executing $FW_SCRIPT for the first time..."
+	/bin/bash $FW_SCRIPT
+	sleep 1
+}
+
+##
+## swap encryption
+##
+
+activate_swap_encryption()
+{
+	FSTAB=/etc/fstab
+
+	cat $FSTAB | awk '{
+		if ($2 == "swap" && $3 == "swap") {
+			if ($4 ~ "encrypt") {
+				/* do nothing, already encrypted */
+				print $0;
+			} else {
+				/* not encrypted -> change that */
+				if ($4 == "defaults") {
+					$4 = "encrypted";
+					print $1 "\t" $2 "\t" $3 "\tencrypted\t" $5 "\t" $6
+				} else {
+					print $1 "\t" $2 "\t" $3 "\t" $4 ",encrypted\t" $5 "\t" $6 
+				}
+			}
+		} else {
+			print $0;
+		}
+	}' > $BASEDIR/fstab_copy
+
+	echo -n "Here are the changes I made in your fstab file. " > $TMPFILE
+	echo "Do you realy want to apply these diffs?\n" >> $TMPFILE
+	diff $FSTAB $BASEDIR/fstab_copy >> $TMPFILE
+	
+	dialog --title "Accept or Deny Changes" \
+		--yesno "`cat $TMPFILE`" \
+		22 70
+	
+	if [ "$?" = "$YES" ]; then
+		mv $BASEDIR/fstab_copy $FSTAB
+		NEED_REBOOT="1"
+	fi
+	rm -f $TMPFILE
+}
+
+##
+## limit_resources
+##
+
+#limit_resources ()
+#{
+#	echo "not implemented."
+#	# TODO
+#}
+
+##
+## main
+##
+
+case $1 in
+	"-v" | "--version" | "ver")
+		echo "HLHS $VERSION based on the Wendzel Linux Hardening Scripts."
+		echo "HLHS and Wendzel Linux HS are Copyright (c) 2006 and written"
+		echo "by Steffen Wendzel <steffen (at) ploetner-it (dot) de."
+		exit
+		;;
+	"-h" | "--help" | "help")
+		echo "hlhs accepts the following parameters:"
+		echo
+		echo "reconf - Re-Configure HLHS"
+		echo "help   - displays this text"
+		echo "ver    - displays copyright and version of hlhs"
+		exit
+		;;
+	"-r" | "--reconf" | "reconf")
+		rm -r $BASEDIR
+		;;
+	*)
+		# do nothing, just run in default configuration
+		;;
+esac
+
+echo "Executing Hardened Linux Hardening Scripts (HLHS) ..."
+
+# check if we need to run the configuration assistant
+if [ ! -d $BASEDIR ]; then
+	mkdir -p $BASEDIR
+	if [ "$?" = "1" ]; then
+		# error msg is displ. by mkdir stderr output,
+		# only exit here.
+		echo "HLHS: exiting ..."
+		exit
+	fi
+	run_setup
+	if [ "$NEED_REBOOT" = "1" ]; then
+		dialog --title "Need a reboot" \
+			--msgbox "Some important changes were made. \
+You need to reboot your system to apply them." \
+			10 70
+	fi
+fi
+
+if [ -f $BASEDIR/proc ]; then
+	secure_proc
+fi
+
+

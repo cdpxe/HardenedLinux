@@ -1,0 +1,9 @@
+# run HLHS on startup
+
+FW_SCRIPT=/etc/firewall.conf
+
+/usr/sbin/hlhs
+
+if [ -x $FW_SCRIPT ]; then
+	/bin/bash $FW_SCRIPT
+fi
