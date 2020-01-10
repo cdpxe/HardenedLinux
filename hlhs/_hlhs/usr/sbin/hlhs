@@ -101,7 +101,8 @@ continue with the configuration." 10 70
 search_strange_files ()
 {
 	find / -name '.. ' -o -name '.. *' -o -name '. ' -o -name '. *' -o -name ' *' 2>/dev/null
-	echo "search completed. please press return ..."
+	echo "Search completed. If you find any files listed above, you should \
+seriously investigate these. Please press return to continue..."
 	read garbage
 }
 
@@ -289,7 +290,7 @@ case $1 in
 	"-v" | "--version" | "ver")
 		echo "HLHS $VERSION based on the Wendzel Linux Hardening Scripts."
 		echo "HLHS and Wendzel Linux HS are Copyright (c) 2006 and written"
-		echo "by Steffen Wendzel <steffen (at) ploetner-it (dot) de."
+		echo "by Steffen Wendzel <steffen (at) wendzel (dot) de>"
 		exit
 		;;
 	"-h" | "--help" | "help")
