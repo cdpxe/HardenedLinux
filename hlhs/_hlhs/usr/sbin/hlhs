@@ -52,7 +52,7 @@ This also removes some GUID/SUID bits." \
 	if [ "$?" = "$YES" ]; then
 		secure_binarys
 	fi
-	sleep 1
+	#sleep 1
 
 	dialog --title "Basic Port Scan Protection" \
 		--yesno "Do you want me to set up firewall rules to prevent \
@@ -61,7 +61,7 @@ usual TCP port scans?" \
 	if [ "$?" = "$YES" ]; then
 		activate_iptables_scanprot
 	fi
-	sleep 1
+	#sleep 1
 
 	dialog --title "Search for strange files?" \
 		--yesno "Should I now search your system for typical files \
@@ -70,7 +70,7 @@ left by an attacker? This can take a long time!" \
 	if [ "$?" = "$YES" ]; then
 		search_strange_files
 	fi
-	sleep 1
+	#sleep 1
 
 	dialog --title "Swap Encryption" \
 		--yesno "Do you want to enable the encryption of your swap?" \
@@ -78,7 +78,7 @@ left by an attacker? This can take a long time!" \
 	if [ "$?" = "$YES" ]; then
 		activate_swap_encryption
 	fi
-	sleep 1
+	#sleep 1
 
 	dialog --title "HLHS Configuration Done" --msgbox \
 		"The HLHS Configuration is done now.\n\n\n \
@@ -100,8 +100,9 @@ continue with the configuration." 10 70
 
 search_strange_files ()
 {
+	echo "Searching for strange files ..."
 	find / -name '.. ' -o -name '.. *' -o -name '. ' -o -name '. *' -o -name ' *' 2>/dev/null
-	echo "Search completed. If you find any files listed above, you should \
+	echo "Search completed. If you can see any files listed above, you should \
 seriously investigate these. Please press return to continue..."
 	read garbage
 }
@@ -227,7 +228,7 @@ sure that you want me to overwrite it?" \
 
 	echo "executing $FW_SCRIPT for the first time..."
 	/bin/bash $FW_SCRIPT
-	sleep 1
+	#sleep 1
 }
 
 ##
@@ -239,7 +240,7 @@ activate_swap_encryption()
 	FSTAB=/etc/fstab
 
 	cat $FSTAB | awk '{
-		if ($2 == "swap" && $3 == "swap") {
+		if ($3 == "swap") {
 			if ($4 ~ "encrypt") {
 				/* do nothing, already encrypted */
 				print $0;
@@ -259,7 +260,7 @@ activate_swap_encryption()
 
 	echo -n "Here are the changes I made in your fstab file. " > $TMPFILE
 	echo "Do you realy want to apply these diffs?\n" >> $TMPFILE
-	diff $FSTAB $BASEDIR/fstab_copy >> $TMPFILE
+	diff -up $FSTAB $BASEDIR/fstab_copy >> $TMPFILE
 	
 	dialog --title "Accept or Deny Changes" \
 		--yesno "`cat $TMPFILE`" \
