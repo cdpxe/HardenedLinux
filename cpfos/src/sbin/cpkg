@@ -1,0 +1,171 @@
+#!/bin/bash -e
+# (bash gives us more possibilities)
+# 
+# cpkg is distributed under the following license:
+# 
+# Copyright (c) 2007 Steffen Wendzel <steffen (at) wendzel (dot) de>
+# Written 2007 by Steffen Wendzel
+# 
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+# Developers note for the coding style:
+# 	BIG_CHAR_VAR   <-- var is exported
+#	small_char_var <-- only used within this script
+
+# How does it work? -- An important note for all developers
+# ---------------------------------------------------------
+# cpkg currently does this steps in the following order:
+# 
+# - init global vars
+# - check if all needed files are there
+# - get pkg's information (from pkginf file)
+# - if no archive file is in $CWD: download it
+# - check md5sum of the file if md5sum is given in pkginf
+# - clean-up: remove old package creation directories (if available)
+# - create base: create some directories we need for the pkg creation
+#     $TMP/<pkgname>   (='$PKG')
+#     $PKG/install
+# - place the pkginf file + pre/post install scripts in $PKG/install/
+# - run <current directory>/build script
+# - check for empty executables and alert if some were found
+# - check if there are dirs that are writable by others
+# - check that ./ has perm 755
+# - create archive and compress it (.tgz OR p7zip???)
+
+# global init of some vars we need.
+TMP=/tmp
+CWD=`pwd`
+# use alway i486 and not i386, i586, i686 or such
+ARCH=`uname -m | sed 's/i.86/i486/'`
+export TMP CWD ARCH
+
+# first check if all needed files are available
+if [ ! -x build ]; then
+	echo "No build script found (or script without exec permission)."
+	exit 1
+fi
+
+if [ ! -f pkginf ]; then
+	echo "No pkginf file found."
+	exit 1
+fi
+
+# get information about the pkg we create
+PKGNAME=`awk '/^%name[\t\ ]*/ {print $2}' pkginf`
+VERSION=`awk '/^%version[\t\ ]*/ {print $2}' pkginf`
+ARCNAME=`awk '/^%arcname[\t\ ]*/ {print $2}' pkginf` # .tgz/.bz2 file name
+MD5SUM=`awk '/^%md5sum[\t\ ]*/ {print $2}' pkginf` # md5 sum of $ARCNAME
+URLS=`awk '/^%url[\t\ ]*/ {print $2}' pkginf` # url for port-mode
+BUILD=`awk '/^%build[\t\ ]*/ {print $2}' pkginf`
+
+if [ "$PKGNAME" = "" -o "$VERSION" = "" -o "$BUILD" = "" ]; then
+	echo "pkgname, version or build not set in pkginf file."
+	exit 1
+fi
+
+# export some vars
+PKG=${TMP}/${PKGNAME}-pkg	# final dir the archive is created from
+BLD=${TMP}/${PKGNAME}-bld	# build dir
+export PKG BLD PKGNAME VERSION BUILD ARCNAME
+
+# clean up last pkg creation environment
+rm -rf $PKG $BLD
+
+# check if the package archive is available (if needed)
+if [ "$ARCNAME" != "" ]; then
+	# archive is needed
+	if [ ! -f "$ARCNAME" ]; then
+		# download it
+		echo "cpkg: No archive found. I will try to download it ..."
+		if [ "$URLS" = "" ]; then
+			echo "cpkg: No %url lines available in pkginf. exiting."
+			exit 99
+		fi
+		for url in `echo $URLS`; do
+			if [ -f $ARCNAME ]; then
+				# okay, we now have the file
+				echo "download done."
+			else
+				( wget "${url}/${ARCNAME}" )
+			fi
+		done
+	fi
+	if [ "$MD5SUM" = "" ]; then
+		echo "No md5sum available in pkginf!!"
+		exit 1
+	fi
+	# check the md5sum
+	NEWSUM=`md5sum ${ARCNAME} | awk '{print $1}'`
+	if [ "$NEWSUM" != "$MD5SUM" ]; then
+		echo "The md5sums of pkginf and the archive file don't match."
+		echo "exiting."
+		exit 1
+	else
+		echo "md5sum okay."
+	fi
+fi
+
+# create pkg build environment
+mkdir -p $PKG $BLD
+mkdir -p ${PKG}/install
+cp ${CWD}/pkginf ${PKG}/install/
+if [ -f ${CWD}/preinst.sh ]; then
+	cp -v ${CWD}/preinst.sh ${PKG}/install/
+fi
+if [ -f ${CWD}/postinst.sh ]; then
+	cp -v ${CWD}/postinst.sh ${PKG}/install/
+fi
+
+# run the build script (e.g. compile the pkg and such things)
+cd $BLD
+$CWD/build
+
+# check if there are empty executables
+cd $PKG
+echo "The following files are EMPTY executables:"; echo
+find . -perm -1 -size 0 -ls
+
+# check if there are files owned by other users than root:root
+cd $PKG
+echo "The following files (if any) are not owned by root:root:"; echo
+find . ! -user root -ls
+find . ! -group root -ls
+
+# check for *~ files left from editing
+cd $PKG
+echo "The following files were maybe created by editors:"; echo
+find . -name '*~' -ls
+
+# check for o+w. but don't check for symlinks w/ this permissions ;-)
+cd $PKG
+echo "The following files have the mode o+w:"; echo
+find . -perm -o+w -a ! -type l -ls
+
+# check that ./ has perm 755
+cd $PKG
+if [ "`find . -name . -perm 755 | wc -l`" != "1" ]; then
+	echo "The base directory of the package (./) is set to a strange"
+	echo "permission setting. Please set it chmod 755 and check the"
+	echo "other directories in your package dir too for correctness."
+	exit 1
+fi
+
+# create the package archive + compress it
+echo "Creating the package archive file:"; echo
+cd $PKG
+tar -czvf ${TMP}/${PKGNAME}-${VERSION}-${ARCH}-${BUILD}.tgz .
+
+exit 0
+

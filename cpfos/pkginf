@@ -1,0 +1,130 @@
+%name		cpfos
+%version	1.0alpha12
+%build		1
+%definst	yes
+%description	Contains the package management tools
+%deps		none
+%maintainer	Steffen Wendzel <steffen (at) wendzel (dot) de>
+%changelog
+
+Nov-29-2007 (version 1.0alpha12)
+- exec pre-installation script before unpacking the rest of the package. this
+  is needed for the binutils package
+
+Nov-28-2007 (version 1.0alpha11)
+- postinst.sh: replace regex stuff in installation script because of problems
+  with busybox while installation
+- postinst.sh: make paths relative to work with the installer
+
+Oct-24-2007 (version 1.0alpha10)
+- ipkg: don't let ipkg install a dependency of a package that is the package
+  itself to prevent DoS!
+
+Oct-16-2007 (version 1.0alpha9):
+- rpkg: fix rpkg non-absolute path problem (rpkg was unable to find files
+  if not started with / as working directory
+- rpkg: add verbose output for every file and directory it removes
+- docs: update the docs (improve some parts)
+- upkg: fix filename of the update file
+
+Oct-14-2007 (version 1.0alpha8):
+- uuups. re-implement doinst.sh backward compatibility!
+
+Oct-13-2007 (version 1.0alpha7):
+- cpfos: only download the packages, if the user acknowledges the update
+  (this makes searches and the update-information faster)
+- postinst.sh: don't remove cpfos.8.gz since it is in the current version
+  and we need it to link all other doc files against it ;-)
+- postinst.sh: also always remove the old spkg manpage first
+- cpfos: fix syntax error in cmd check
+- upkg: fix var name of the update directory path
+- simply make use of the slackware tools when installing a slackware
+  package. this will be auto-compatible for future versions since pat will
+  always update his pkgtools package and we simply use the needed version
+  here.
+- upkg: always make an emergency-new-package-file-not-found backup of the pkg
+  information file before removing it completely. in the case of a not-found
+  package file, auto-restore the old package info file.
+- s2hinf: fix var name and fix regex
+- spkg fix update_dir -> UPDATE_DIR (like with s2hinf)
+
+Oct-11-2007 (version 1.0alpha6-untested):
+- to prevent problems within the package system and to make it
+  easier to understand our hybride package system: rename OUR
+  pkgtools to cpfos (crazy packager from outa space) and let the
+  old slackware package stay with its name pkgtools for backward
+  compatibilty.
+- also rename pkgtools.8 to cpfos.8 and the config file in /etc
+  from pkgtools.conf to cpfos.conf.
+- fix filenames in the build, postinst.sh script and in ipkg
+- spkg: don't find out the HL version (since we don't need to find
+  it out in this tool)
+
+Oct-09-2007 (version 1.0alpha5-untested):
+- add cpfos, new meta tool that is used instead of the others
+  (it only calls the other tools and makes some checks for more
+  usuability)
+- added spkg, a tool to search packages by keywords
+- added s2hinf, a tool to create pkgfile information from slackware
+  package files
+
+sep-17-2007 (version 1.0alpha4):
+- implement backward compatibilty to the slackware package format
+  by executing install/doinst.sh too, if available
+
+aug-26-2007-2 (version 1.0alpha3):
+- upkg: also check for ! ./hardenedlinux paths
+- postinst.sh: script created (removes old + creats new links to
+  pkgtools.8.gz)
+
+aug-26-2007 (version 1.0alpha2):
+- ipkg: don't ask to replace a file if the md5sum of the new config
+  file is the same like the md5sum of the exiting file. this prevents
+  useless questions.
+- ipkg: remove old .new files if md5sum is eq
+
+aug-24-2007-2:
+- doc: add a pkgtools.8 manpage
+
+aug-24-2007-1 (version 1.0alpha):
+- upkg: wrote the entire tool. package updates are now part of the
+  functionality of the hlpkgtools.
+- cpkg: This is now a ports system too. Har! Linux with ports + pkgs
+  in one package system. This is great (and only took me to code a
+  few lines of script code!)
+
+aug-04-2007:
+- cpkg: make sure that ./ has permission 755
+
+jul-21-2007:
+- ipkg: diff $old $new config file instead of $new $old
+- ipkg: even exec {post,pre}inst.sh if they are not chmod +x by using
+  /bin/sh ./install/{pre,post}inst.sh directly and only checking for
+  -f <script> instead of -x <script>.
+
+jul-20-2007:
+- cpkg: set pkg creation architecture ($ARCH) always to i486 on x86
+  systems (what fixes kernel build too)
+
+jul-16-2007:
+- fix two bugs in config assistant
+
+jul-09-2007:
+- fix empty line between elif-else clause in ipg
+- fix some var names to upper case on startup pkginf file check in ipkg
+- fix leading whitespaces in %deps line in pkginf files used in ipkg
+
+jul-07-2007:
+- added /etc/pkgtools.conf
+	- added var ipkg_always_keep_cfg
+- improved lots of "cat|grep|awk" commands to "awk '/<regex>/ {...}'"
+
+jul-05-2007[2]:
+- export additional vars needed by build scripts (ARCH, VERSION, BUILD)
+- added permission checks for o+w permission in ipkg
+- added dependency support in ipkg
+
+jul-05-2007:
+- init the repository with the new versions
+
+

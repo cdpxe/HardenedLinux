@@ -1,0 +1,103 @@
+#!/bin/bash
+# (bash gives us more possibilities)
+# (dont use -e because it is sometimes better to accept an error
+#  than to accept a fully broken system!)
+# 
+# upkg is distributed under the following license:
+# 
+# Copyright (c) 2007 Steffen Wendzel <steffen (at) wendzel (dot) de>
+# Written 2007 by Steffen Wendzel
+# 
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+# Developers note for the coding style:
+# 	BIG_CHAR_VAR   <-- var is exported
+#	small_char_var <-- only used within this script
+
+# How does it work? -- An important note for all developers
+# ---------------------------------------------------------
+# upkg currently does this steps in the following order:
+# 
+# - for every pkg do:
+#     - install new packages with ipkg and remove all files missed in
+#       the new version of the pkg (=unneded files)
+#     - don't forget to update /var/cache/packages/<pkgname>.*
+#     - remove /var/cache/packages/todo/<pkgfile>
+# - maybe reboot on auto-update mode if the kernel pkg was updated
+#   (users should be able to configure this via a parameter or via
+#   a config file in /etc).
+echo $UPDATE_DIR
+cachedir=/var/cache/packages
+
+# try to find a co repository
+hlver=`cat /etc/hardenedlinux-version`
+
+if [ "$UPDATE_DIR" = "" ]; then
+	echo "UPDATE_DIR not set. please use cpfos"
+	exit 1
+fi
+
+# read the file with the current versions of the packages and check for
+# available updates
+cvfile=$UPDATE_DIR/updates/curvers
+while read line; do
+	pkg=`echo $line | awk '{print $1}'`
+	curver=`echo $line | awk '{print $2}'`
+	curbld=`echo $line | awk '{print $3}'`
+	pkginf=$cachedir/${pkg}.inf
+	if [ -f $pkginf ]; then
+		# okay, we have this package. now cmp the versions
+		myver=`egrep '^%version' $pkginf | awk '{print $2}'`
+		mybld=`egrep '^%build' $pkginf | awk '{print $2}'`
+		if [ "$myver" != "$curver" ]; then
+			echo "* $pkg ($myver -> $curver)"
+			todolist=`echo $todolist $pkg`
+		elif [ "$mybld" != "$curbld" ]; then
+			echo "* $pkg (new build available)"
+			todolist=`echo $todolist $pkg`
+		fi
+	fi
+done < $cvfile
+
+if [ "$todolist" = "" ]; then
+	echo "No updates available."
+	exit 0
+fi
+echo -n "Do you want to update these packages? (y/n) "
+read ans
+if [ "$ans" = "y" ]; then
+	echo "Downloading new packages ..."
+	svn up $UPDATE_DIR/packages
+	svn up $UPDATE_DIR/updates
+	for pkg in $todolist; do
+		echo "Updating \"$pkg\" ..."
+		mv $cachedir/${pkg}.inf $cachedir/${pkg}.inf.remove.$$
+		if [ -f $UPDATE_DIR/updates/${pkg}*.tgz ]; then
+			ipkg $UPDATE_DIR/updates/${pkg}.tgz
+		elif [ -f $UPDATE_DIR/packages/${pkg}*.tgz ]; then
+			ipkg $UPDATE_DIR/packages/${pkg}*.tgz
+		else
+			echo "unable to find $pkg in $UPDATE_DIR/ subdirs."
+			# restore the old info file
+			mv $cachedir/${pkg}.inf.remove.$$ $cachedir/${pkg}.inf
+			exit 1
+		fi
+		# okay, went fine. remove the old inf file completely
+		rm $cachedir/${pkg}.inf.remove.$$
+	done
+fi
+
+exit 0
+

@@ -1,0 +1,44 @@
+#!/bin/bash -e
+# 
+# s2hinf is distributed under the following license:
+# 
+# Copyright (c) 2007 Steffen Wendzel <steffen (at) wendzel (dot) de>
+# Written 2007 by Steffen Wendzel
+# 
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+# Developers note for the coding style:
+# BIG_CHAR_VAR   <-- var is exported
+#small_char_var <-- only used within this script
+
+
+# s2hinf - creates Hardened Linux compatible information for the pkgfile
+#          from slackware binary packages
+
+pkgfile=$1
+
+if [ "$pkgfile" = "" ]; then
+	echo "usage: $0 [package file]"
+	exit 1
+fi
+
+if [ ! -f $pkgfile ]; then
+	echo "$pkgfile not found"
+	exit 1
+fi
+
+tar xzOf $pkgfile install/slack-desc | egrep ^[_a-zA-Z0-9-]*: | head -1
+exit 0
+
