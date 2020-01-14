@@ -18,6 +18,8 @@ YES=0		# check if the user choosed the "YES" button in a dialog
 VERSION=0.4.3
 NEED_REBOOT="0"	# do we need to reboot after re-config?
 HLHS_LOG=$BASEDIR/hlhs.log
+HLHS_ETC=/etc
+HLHS_BADUSERS=hlhs_bad.users.conf
 
 ##
 ## run_setup
@@ -77,6 +79,16 @@ left by an attacker? This can take a long time!" \
 		9 70
 	if [ "$?" = "$YES" ]; then
 		activate_swap_encryption
+	fi
+	#sleep 1
+
+	dialog --title "Insecure Usernames" \
+		--yesno "Brute force attacks on SSH are very common and try to \
+guess passwords for typical usernames. Do you want me to scan your /etc/passwd \
+for such usernames?" \
+		9 70
+	if [ "$?" = "$YES" ]; then
+		scan_for_bad_usernames
 	fi
 	#sleep 1
 
@@ -258,6 +270,8 @@ activate_swap_encryption()
 		}
 	}' > $BASEDIR/fstab_copy
 
+# TODO: check whether we actually performed any changes here! If not, tell user that there is nothing left to be done instead of presenting some empty diff.
+
 	echo -n "Here are the changes I made in your fstab file. " > $TMPFILE
 	echo "Do you realy want to apply these diffs?\n" >> $TMPFILE
 	diff -up $FSTAB $BASEDIR/fstab_copy >> $TMPFILE
@@ -271,6 +285,30 @@ activate_swap_encryption()
 		NEED_REBOOT="1"
 	fi
 	rm -f $TMPFILE
+}
+
+##
+## Scan for bad usernames
+##
+
+scan_for_bad_usernames()
+{
+	USERNAMES=""
+	for myusername in `awk -F\: '{print $1}' </etc/passwd`; do
+		NEW=`egrep "^${myusername}$" ${HLHS_ETC}/${HLHS_BADUSERS}`
+		if [ "$NEW" != "" ]; then
+			USERNAMES="${USERNAMES}\n${NEW}"
+		fi
+	done
+	if [ "$USERNAMES" = "" ]; then
+		dialog --title "Accept or Deny Changes" \
+		--msgbox "Detected no insecure usernames." \
+		22 70
+	else
+		dialog --title "Typical Brute-force Usernames on Host" \
+		--msgbox "$USERNAMES\n\nPlease consider checking these usernames for logon-rights and insecure passwords." \
+		22 70
+	fi
 }
 
 ##
