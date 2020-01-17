@@ -1,5 +1,5 @@
 %name		hlhs
-%version	0.4.3
+%version	0.5.0
 %build		1
 %definst	yes
 %deps		none
@@ -7,10 +7,15 @@
 %description	The Hardened Linux Hardening Scripts (HLHS)
 %changelog
 
+---2020---
+jan-14-2020:
+- added scan for unfortunate usernames
+
 jan-10-2020:
 - several tiny improvements were made, checked code on
   current Debian stable
 
+---2007---
 nov-30-2007:
 - remove /etc/meta/meta functions
 
