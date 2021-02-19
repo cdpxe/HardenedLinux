@@ -7,6 +7,7 @@ This repository is a partial clone of my former Linux distribution *[Hardened Li
 - *external ressources:*
    - [Original SVN repository, containing base system and all packages](https://sourceforge.net/p/hardenedlinux/code/HEAD/tree/) - hosted on sf.net
    - [ISO images](https://sourceforge.net/projects/hardenedlinux/) - download the original ISO images (latest update: 2007)
+   - [Original documentation](https://sourceforge.net/p/hardenedlinux/code/HEAD/tree/doc/) (web-SVN access)
 
 ## Introduction
 
