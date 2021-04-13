@@ -4,7 +4,7 @@
 #############################################################
 ##        HARDENED LINUX HARDENING SCRIPTS (HLHS)          ##
 #############################################################
-## Copyright (C) 2006-2007,2019 Steffen Wendzel            ##
+## Copyright (C) 2006-2021 Steffen Wendzel                 ##
 ##                     <steffen (at) wendzel (dot) de>     ##
 #############################################################
 #############################################################
@@ -15,7 +15,7 @@
 BASEDIR=/var/log/hlhs
 TMPFILE=$BASEDIR/tmpfile
 YES=0		# check if the user choosed the "YES" button in a dialog
-VERSION=0.5.0
+VERSION=0.5.1
 NEED_REBOOT="0"	# do we need to reboot after re-config?
 HLHS_LOG=$BASEDIR/hlhs.log
 HLHS_ETC=/etc
@@ -151,7 +151,8 @@ secure_proc ()
 
 	if [ -d $PN6 ]; then
 		disable $PN6/conf/*/accept_redirects \
-			$PN6/conf/*/accept_ra
+			$PN6/conf/*/accept_ra \
+			$PN6/conf/*/accept_source_route
 	fi
 }
 
